@@ -1,27 +1,12 @@
-# pets/pet_a.py
+from pets.base_pet import BasePet
 
-from PyQt5.QtGui import QPixmap
-
-class PetA:
+class PetA(BasePet):
     def __init__(self):
-        self.state = 'idle'  # 初始状态为闲置
-        self.idle_images = ['assets/pet_a/idle/idle_1.png', 'assets/pet_a/idle/idle_2.png']
-        self.walking_images = ['assets/pet_a/walking/walk_1.png', 'assets/pet_a/walking/walk_2.png']
-        self.current_image_index = 0
-
-    def get_image(self):
-        """ 获取宠物当前状态的图像 """
-        if self.state == 'idle':
-            return self.idle_images[self.current_image_index]
-        elif self.state == 'walking':
-            return self.walking_images[self.current_image_index]
-
-    def walk(self):
-        """ 宠物走动 """
-        self.state = 'walking'
-        self.current_image_index = (self.current_image_index + 1) % len(self.walking_images)
-
-    def idle(self):
-        """ 宠物闲置 """
-        self.state = 'idle'
-        self.current_image_index = (self.current_image_index + 1) % len(self.idle_images)
+        super().__init__(images_path="assets/pet_a")
+        print("宠物A初始化完成")
+        
+        # 开启重力
+        self.enable_gravity()
+        
+    # 如果将来需要给 PetA 添加特殊功能，可以在这里进行扩展
+    # 例如新的行为、动画等
