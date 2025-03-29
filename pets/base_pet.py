@@ -3,6 +3,10 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QWidget, QDesktopWidget
 import random
 from PyQt5.QtWidgets import QApplication 
+from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget
+from utils.upper import get_window_and_taskbar_bounds
+from PyQt5.QtGui import QScreen
 
 class BasePet(QWidget):
     def __init__(self, images_path):
@@ -93,7 +97,7 @@ class BasePet(QWidget):
         self.walk_distance = random.randint(100, 300)  # 走的距离
         self.walk_speed = 1  # 恒定速度，减小步长以实现平滑滑动
 
-        # print(f"宠物进入行走状态，走向 {'左' if self.walk_direction == -1 else '右'}, 行走距离：{self.walk_distance}")
+        print(f"宠物进入行走状态，走向 {'左' if self.walk_direction == -1 else '右'}, 行走距离：{self.walk_distance}")
 
         # 使用高频率定时器来使位移看起来像在滑动
         self.walk_timer = QTimer()
@@ -171,43 +175,20 @@ class BasePet(QWidget):
 
             self.move(new_x, new_y)
 
-            # 获取屏幕上的所有窗口
-            desktop = QDesktopWidget()
-            screen_rect = desktop.screenGeometry()
+            # 使用 QScreen 来获取屏幕信息
+            screen = QApplication.primaryScreen()
+            screen_rect = screen.geometry()
             screen_bottom = screen_rect.bottom()
-            taskbar_height = 40
-            ground_level = screen_bottom - taskbar_height
+
+            taskbar_height = 40  # 任务栏的高度
+            ground_level = screen_bottom - taskbar_height  # 计算宠物应落地的位置（屏幕底部 - 任务栏高度）
             pet_height = self.label.pixmap().height()
-            target_bottom = ground_level - pet_height
+            target_bottom = ground_level - pet_height  # 宠物的底部位置
 
-            # 获取屏幕上的所有窗口
-            all_windows = [w for w in QApplication.topLevelWidgets() if isinstance(w, QWidget)]
-
-            # 设定一个标志，表示宠物是否接触到任何窗口的顶部
-            is_contact_with_surface = False
-
-            for window in all_windows:
-                # 判断宠物与窗口顶部的距离
-                window_rect = window.geometry()
-                window_top = window_rect.top()
-                window_bottom = window_rect.bottom()
-
-                # 判断宠物是否接触到窗口顶部或最底部
-                if new_y + pet_height >= window_top and new_y + pet_height <= window_bottom:
-                    self.fall_velocity = 0
-                    self.move(new_x, window_top - pet_height)  # 将宠物放置在窗口的顶部位置
-                    self.gravity_timer.stop()  # 停止重力
-                    self.state = "idle"  # 切换回闲置状态
-                    print("宠物进入闲置状态")
-                    is_contact_with_surface = True
-                    break
-
-            # 如果没有接触到任何窗口的顶部，宠物继续下落
-            if not is_contact_with_surface:
-                if self.y() >= target_bottom:  # 如果已经触底
-                    self.fall_velocity = 0
-                    self.move(self.x(), target_bottom)  # 将宠物放置在地面上
-                    self.gravity_timer.stop()  # 停止重力
-                    self.state = "idle"  # 切换回闲置状态
-                    print("宠物已落地，进入闲置状态")
-
+            # 如果宠物已经触及底部，则停止掉落
+            if new_y >= target_bottom:
+                self.fall_velocity = 0  # 停止加速
+                self.move(new_x, target_bottom)  # 将宠物位置设置为地面
+                self.gravity_timer.stop()  # 停止重力
+                self.state = "idle"  # 切换为闲置状态
+                print("宠物已落地，进入闲置状态")

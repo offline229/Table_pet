@@ -1,60 +1,76 @@
-# 干脏活用
+import sys
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtWidgets import QApplication
+from pets.pet_a import PetA  # 导入PetA类
 
-import os
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
 
-def create_project_structure():
-    # 项目根目录
-    base_dir = "桌宠项目"
+    pets = []  # 用于存储多个PetA实例
 
-    # 资源目录和文件
-    assets_dir = os.path.join(base_dir, "assets")
-    pet_a_dir = os.path.join(assets_dir, "pet_a")
-    pet_b_dir = os.path.join(assets_dir, "pet_b")
-    
-    # 桌宠资源子目录
-    idle_a_dir = os.path.join(pet_a_dir, "idle")
-    walking_a_dir = os.path.join(pet_a_dir, "walking")
-    sound_a_dir = os.path.join(pet_a_dir, "sound")
-    animation_a_dir = os.path.join(pet_a_dir, "animation")
-    
-    idle_b_dir = os.path.join(pet_b_dir, "idle")
-    walking_b_dir = os.path.join(pet_b_dir, "walking")
-    sound_b_dir = os.path.join(pet_b_dir, "sound")
-    animation_b_dir = os.path.join(pet_b_dir, "animation")
-    
-    # 桌宠类目录
-    pets_dir = os.path.join(base_dir, "pets")
-    
-    # 文件列表
-    files = [
-        os.path.join(pets_dir, "__init__.py"),
-        os.path.join(pets_dir, "base_pet.py"),
-        os.path.join(pets_dir, "interactive_pet.py"),
-        os.path.join(pets_dir, "animated_pet.py"),
-        os.path.join(pets_dir, "pet_a.py"),
-        os.path.join(pets_dir, "pet_b.py"),
-        os.path.join(base_dir, "main.py"),
-        os.path.join(base_dir, "requirements.txt"),
-        os.path.join(base_dir, "README.md"),
-        os.path.join(base_dir, "setup.py"),
-    ]
+    # 创建多个PetA实例
+    for i in range(3):  # 创建3个PetA实例
+        pet_a = PetA()  # 创建一个PetA实例
+        pet_a.move(QPoint(100 + i * 150, 100 + i * 50))  # 给每个实例设置不同的位置
+        pet_a.show()  # 显示宠物实例
+        pets.append(pet_a)  # 将每个实例添加到列表中
 
-    # 创建目录
-    dirs_to_create = [
-        assets_dir, pet_a_dir, pet_b_dir, idle_a_dir, walking_a_dir,
-        sound_a_dir, animation_a_dir, idle_b_dir, walking_b_dir,
-        sound_b_dir, animation_b_dir, pets_dir
-    ]
+    sys.exit(app.exec_())
 
-    for dir_path in dirs_to_create:
-        os.makedirs(dir_path, exist_ok=True)
 
-    # 创建空文件
-    for file_path in files:
-        with open(file_path, "w"):
-            pass  # 只创建空文件
+import sys
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QDialog, QVBoxLayout, QPushButton
+from PyQt5.QtGui import QIcon
+from pets.pet_a import PetA  # 导入PetA类
+from pets.interactive_pet import PetMenu  # 导入自定义的PetMenu类
 
-    print(f"项目结构已创建在 {base_dir} 目录下。")
+class TrayApp:
+    def __init__(self):
+        # 初始化任务栏图标
+        self.app = QApplication(sys.argv)
+
+        # 创建任务栏图标
+        self.tray_icon = QSystemTrayIcon(QIcon("assets/icon.png"), self.app)  # 设置任务栏图标
+        self.tray_icon.setVisible(True)
+
+        # 创建任务栏右键菜单
+        tray_menu = QMenu()
+
+        # 创建菜单项
+        summon_pet_action = QAction("召唤宠物", self.app)
+        summon_pet_action.triggered.connect(self.show_pet_menu)
+        tray_menu.addAction(summon_pet_action)
+
+        # 退出程序
+        quit_action = QAction("退出", self.app)
+        quit_action.triggered.connect(self.app.quit)
+        tray_menu.addAction(quit_action)
+
+        # 设置任务栏菜单
+        self.tray_icon.setContextMenu(tray_menu)
+
+        # 创建并显示两只宠物作为测试
+        self.create_and_show_test_pets()
+
+    def show_pet_menu(self):
+        """显示宠物菜单"""
+        self.pet_menu = PetMenu()
+        self.pet_menu.exec_()
+
+    def create_and_show_test_pets(self):
+        """创建并显示两只宠物作为测试"""
+        pet_1 = PetA()  # 创建第一只宠物
+        pet_1.move(QPoint(100, 100))  # 设置宠物的位置
+        pet_1.show()  # 显示宠物
+
+        pet_2 = PetA()  # 创建第二只宠物
+        pet_2.move(QPoint(300, 100))  # 设置第二只宠物的位置
+        pet_2.show()  # 显示宠物
+
+    def run(self):
+        self.app.exec_()
 
 if __name__ == "__main__":
-    create_project_structure()
+    tray_app = TrayApp()
+    tray_app.run()
