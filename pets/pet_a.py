@@ -30,8 +30,8 @@ class PetA(BasePet):
         """检测与其他宠物的距离并触发相对动画"""
         if self.state == "interaction":  # 只有在互动状态下才进行互动检测
             print("概率触发互动")
-            # 20% 概率触发互动
-            if random.random() < 0.2:
+            # 80% 概率触发互动
+            if random.random() < 0.8:
                 for other_pet in PetManager.get_all_pets():
                     if other_pet is not self:
                         distance = self.distance_to(other_pet)
@@ -57,6 +57,7 @@ class PetA(BasePet):
         if isinstance(other_pet, PetA):  # 如果是同类PetA
             print("两只 PetA 相遇，触发 A-A 互动动画！")
             self.enter_interaction_state("a_a")
+            other_pet.enter_interaction_state("a_a")  # 被互动的宠物也进入 A-A 互动状态
         elif isinstance(other_pet, BasePet):  # 和其他宠物（例如 PetB）互动
             print("PetA 与其他宠物相遇，触发 A-B 互动动画")
             self.enter_interaction_state("a_b")
@@ -65,9 +66,9 @@ class PetA(BasePet):
         """进入互动状态"""
         if self.state not in ["falling", "dragging"]:  # 避免在掉落或拖拽时改变状态
             if interaction_type == "a_a":
-                self.idle_images = self.a_a_images  # 使用 A-A 互动动画
+                self.interaction_images = self.a_a_images  # 使用 A-A 互动动画
             elif interaction_type == "a_b":
-                self.idle_images = self.a_b_images  # 使用 A-B 互动动画
+                self.interaction_images = self.a_b_images  # 使用 A-B 互动动画
 
             self.current_frame = 0
             self.is_walking = False  # 禁用行走，防止频闪
@@ -83,5 +84,5 @@ class PetA(BasePet):
         self.interaction_duration -= 10  # 每次检查减少 10 毫秒
         if self.interaction_duration <= 0:
             self.interaction_timer.stop()  # 停止动画定时器
-            
+
             self.enter_idle_state()  # 回到闲置状态

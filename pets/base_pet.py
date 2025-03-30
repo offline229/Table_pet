@@ -20,6 +20,7 @@ class BasePet(QWidget):
         self.walk_images = [self.load_image(f"walking/walk_{i}.png") for i in range(1, 3)]
         self.drag_images = [self.load_image(f"drag/drag_{i}.png") for i in range(1, 3)]  # 拖拽状态
         self.fall_images = [self.load_image(f"fall/fall_{i}.png") for i in range(1, 3)]  # 掉落状态
+        self.interaction_images = [self.load_image(f"idle/idle_{i}.png") for i in range(1, 3)]
 
         self.current_frame = 0
         self.is_walking = False
@@ -78,13 +79,13 @@ class BasePet(QWidget):
             
         elif self.state == "dragging":
             images = self.drag_images  # 使用拖拽动画
-            print("drag")
+            # print("drag")
         elif self.state == "falling":
             images = self.fall_images  # 使用掉落动画
-            print("fall")
+            # print("fall")
         elif self.state == "interaction":
-            images = self.idle_images  # 默认返回闲置动画（互动状态可以自己定义）
-            print("back")
+            images = self.interaction_images  # 默认返回闲置动画（互动状态可以自己定义）
+            # print("back")
         
         self.current_frame = (self.current_frame + 1) % len(images)
         self.label.setPixmap(images[self.current_frame])
@@ -92,7 +93,7 @@ class BasePet(QWidget):
     def update_state(self):
         """更新宠物状态"""
         if self.state == "idle":
-            print("idle1")
+            # print("idle1")
             self.enter_idle_state()
         elif self.state == "walking":
             self.enter_walking_state()
@@ -116,7 +117,7 @@ class BasePet(QWidget):
             self.current_frame = 0
             self.label.setPixmap(self.idle_images[self.current_frame])
             self.state = "idle"  # 设置为闲置状态
-            print("进入闲置状态")
+            # print("进入闲置状态")
             # 设置一个随机时间（1-5秒）后决定进入 walk 或 interaction 状态
             if not hasattr(self, 'random_event_timer') or not self.random_event_timer.isActive():
                 self.random_event_timer = QTimer()
@@ -128,7 +129,7 @@ class BasePet(QWidget):
 
     def trigger_random_event(self):
         """触发随机事件：进入 walk 或 interaction 状态"""
-        print(f"触发随机事件: 当前状态 = {self.state}")
+        # print(f"触发随机事件: 当前状态 = {self.state}")
         event = random.choice(["walk", "interaction"])  # 50% 的概率选择
         if event == "walk":
             print("触发进入行走状态")

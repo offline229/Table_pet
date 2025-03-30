@@ -1,0 +1,25 @@
+# Python 编译生成的文件
+*.pyc
+*.pyo
+__pycache__/
+
+# PyInstaller 打包生成的文件
+dist/
+build/
+*.spec
+
+# 包含的日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.bak
+
+# 打包过程中可能生成的临时文件
+*.swp
+*.swo
+*.DS_Store
+
+# 如果使用了虚拟环境
+venv/
+env/
