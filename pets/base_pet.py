@@ -3,10 +3,9 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QWidget, QDesktopWidget
 import random
 from PyQt5.QtWidgets import QApplication 
-from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget
-from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget
 from utils.upper import get_window_and_taskbar_bounds
 from PyQt5.QtGui import QScreen
+from pets.pet_manager import PetManager
 
 class BasePet(QWidget):
     def __init__(self, images_path):
@@ -14,10 +13,14 @@ class BasePet(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.SubWindow)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.images_path = images_path
+        PetManager.register_pet(self)
 
         # 加载宠物图片
         self.idle_images = [self.load_image(f"idle/idle_{i}.png") for i in range(1, 3)]
         self.walk_images = [self.load_image(f"walking/walk_{i}.png") for i in range(1, 3)]
+        self.drag_images = [self.load_image(f"drag/drag_{i}.png") for i in range(1, 3)]  # 拖拽状态
+        self.fall_images = [self.load_image(f"fall/fall_{i}.png") for i in range(1, 3)]  # 掉落状态
+
         self.current_frame = 0
         self.is_walking = False
 
@@ -55,55 +58,114 @@ class BasePet(QWidget):
 
         print("宠物初始化完成")
 
+    def __del__(self):
+        PetManager.unregister_pet(self)
+
+    def distance_to(self, other_pet):
+        """计算两个宠物间的距离"""
+        return ((self.x() - other_pet.x()) ** 2 + (self.y() - other_pet.y()) ** 2) ** 0.5
+
     def load_image(self, filename):
         return QPixmap(f"{self.images_path}/{filename}")
 
     def update_animation(self):
-        images = self.walk_images if self.is_walking else self.idle_images
+        """更新动画，根据状态播放不同的动画"""
+        if self.state == "idle":
+            images = self.idle_images
+
+        elif self.state == "walking":
+            images = self.walk_images
+            
+        elif self.state == "dragging":
+            images = self.drag_images  # 使用拖拽动画
+            print("drag")
+        elif self.state == "falling":
+            images = self.fall_images  # 使用掉落动画
+            print("fall")
+        elif self.state == "interaction":
+            images = self.idle_images  # 默认返回闲置动画（互动状态可以自己定义）
+            print("back")
+        
         self.current_frame = (self.current_frame + 1) % len(images)
         self.label.setPixmap(images[self.current_frame])
 
     def update_state(self):
         """更新宠物状态"""
         if self.state == "idle":
+            print("idle1")
             self.enter_idle_state()
         elif self.state == "walking":
             self.enter_walking_state()
         elif self.state == "falling":
             self.apply_gravity()  # 在掉落状态下应用重力
+        elif self.state == "dragging":
+            self.enter_dragging_state()  # 拖拽状态的处理
+
+    def enter_dragging_state(self):
+        """进入拖拽状态"""
+        self.is_walking = False
+        self.state = "dragging"  # 保证进入拖拽状态
+        # 根据需要更新拖拽动画或处理其他逻辑
+        self.label.setPixmap(self.drag_images[0])  # 更新为拖拽动画的第一帧
 
     def enter_idle_state(self):
         """进入闲置状态"""
-        if self.state != "falling":  # 如果不是掉落状态
+        # 确保只有第一次进入时才设置定时器
+        if self.state != "falling" and self.state != "dragging":  # 如果不是掉落或拖拽状态
             self.is_walking = False
             self.current_frame = 0
             self.label.setPixmap(self.idle_images[self.current_frame])
-            self.state = "walking"  # 随机切换到运动状态
-            # print("宠物进入闲置状态")
+            self.state = "idle"  # 设置为闲置状态
+            print("进入闲置状态")
+            # 设置一个随机时间（1-5秒）后决定进入 walk 或 interaction 状态
+            if not hasattr(self, 'random_event_timer') or not self.random_event_timer.isActive():
+                self.random_event_timer = QTimer()
+                self.random_event_timer.timeout.connect(self.trigger_random_event)
+                random_timeout = random.randint(1000, 5000)  # 每1-5秒触发一次
+                self.random_event_timer.start(random_timeout)
+            else:
+                print("定时器已经启动，无需重新启动")
 
-            # 设置一个随机时间（1-5秒）后进入行走状态
-            self.walk_timer = QTimer()
-            self.walk_timer.timeout.connect(self.start_walking)
-            self.walk_timer.start(random.randint(1000, 5000))
+    def trigger_random_event(self):
+        """触发随机事件：进入 walk 或 interaction 状态"""
+        print(f"触发随机事件: 当前状态 = {self.state}")
+        event = random.choice(["walk", "interaction"])  # 50% 的概率选择
+        if event == "walk":
+            print("触发进入行走状态")
+            self.start_walking()  # 进入行走状态
+        elif event == "interaction":
+            print("触发进入互动状态")
+            self.state = "interaction"  # 进入互动状态
+            if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
+                self.random_event_timer.stop()
 
     def start_walking(self):
         """开始行走状态"""
-        self.is_walking = True
-        self.state = "walking"
-        self.walk_timer.stop()  # 停止定时器
+        if self.state != "falling" and self.state != "dragging":  # 检查是否处于掉落或拖拽状态
+            print("开始行走状态")
+            self.is_walking = True
+            self.state = "walking"  # 进入行走状态
+            self.current_frame = 0
+            self.label.setPixmap(self.walk_images[self.current_frame])
 
-        # 随机选择方向和速度（恒定速度）
-        self.walk_direction = random.choice([-1, 1])  # 记录运动方向，-1表示左，1表示右
-        self.walk_distance = random.randint(100, 300)  # 走的距离
-        self.walk_speed = 1  # 恒定速度，减小步长以实现平滑滑动
+            # 停止定时器，防止闲置状态被反复进入
+            if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
+                self.random_event_timer.stop()
 
-        print(f"宠物进入行走状态，走向 {'左' if self.walk_direction == -1 else '右'}, 行走距离：{self.walk_distance}")
 
-        # 使用高频率定时器来使位移看起来像在滑动
-        self.walk_timer = QTimer()
-        self.walk_timer.timeout.connect(self.enter_walking_state)
-        self.walk_timer.start(10)  # 每10毫秒更新一次
 
+            # 随机选择方向和速度（恒定速度）
+            self.walk_direction = random.choice([-1, 1])  # 记录运动方向，-1表示左，1表示右
+            self.walk_distance = random.randint(100, 300)  # 走的距离
+            self.walk_speed = 1  # 恒定速度，减小步长以实现平滑滑动
+
+            print(f"宠物进入行走状态，走向 {'左' if self.walk_direction == -1 else '右'}, 行走距离：{self.walk_distance}")
+            # 设置行走定时器更新位置
+            self.walk_timer = QTimer()
+            self.walk_timer.timeout.connect(self.enter_walking_state)
+            self.walk_timer.start(10)  # 每10毫秒更新一次
+
+        
     def enter_walking_state(self):
         """进入运动状态"""
         if self.is_walking:
@@ -130,6 +192,7 @@ class BasePet(QWidget):
             # 如果重力已开启，停止重力
             if self.gravity_enabled:
                 self.gravity_timer.stop()
+            self.state = "dragging"  # 进入拖拽状态
 
     def mouseMoveEvent(self, event):
         if self.dragging:

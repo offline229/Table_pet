@@ -2,7 +2,7 @@
 
 桌宠项目/
 ├── assets/                    # 存放资源文件（例如宠物图像、声音等）
-│   ├── icon.py                # icon 
+│   ├── icon.py                # icon
 │   ├── pet_a/                 # 桌宠A的所有资源
 │   │   ├── idle/              # 宠物A的闲置动作图像
 │   │   │   ├── idle_1.png    # 闲置动作1
@@ -10,22 +10,32 @@
 │   │   ├── walking/           # 宠物A的行走动作图像
 │   │   │   ├── walk_1.png    # 行走动作1
 │   │   │   ├── walk_2.png    # 行走动作2
+│   │   ├── a_a/               # 宠物A的特殊动作（A-A互动）
+│   │   │   ├── a_a_1.png     # A-A互动动作1
+│   │   │   ├── a_a_2.png     # A-A互动动作2
+│   │   ├── a_b/               # 宠物A的特殊动作（A-B互动）
+│   │   │   ├── a_b_1.png     # A-B互动动作1
+│   │   │   ├── a_b_2.png     # A-B互动动作2
 │   │   ├── sound/             # 宠物A的音效
 │   │   └── animation/         # 宠物A的动画资源（例如背景动画）
 │   └── pet_b/                 # 桌宠B的所有资源
 │       ├── idle/              # 宠物B的闲置动作图像
 │       ├── walking/           # 宠物B的行走动作图像
+│       ├── b_a/               # 宠物B的特殊动作（B-A互动）
+│       │   ├── b_a_1.png     # B-A互动动作1
+│       │   ├── b_a_2.png     # B-A互动动作2
 │       ├── sound/             # 宠物B的音效
 │       └── animation/         # 宠物B的动画资源
 ├── pets/                      # 桌宠类和功能的定义
-│   ├── tray_menu.py            # 菜单栏
-│   ├── base_pet.py            # 桌宠基类
-│   ├── interactive_pet.py     # 交互功能
-│   ├── animated_pet.py        # 动画功能
-│   ├── pet_a.py               # 桌宠A的实现
-│   └── pet_b.py               # 桌宠B的实现
-├── utils/                     # 桌宠类和功能的定义
-│   ├── upper.py               # 上界计算
+│   ├── pet_manager.py          #管理全局的宠物 
+│   ├── tray_menu.py            # 菜单栏，应包含退出、召唤、允许互动范围
+│   ├── base_pet.py            # 桌宠基类：提供行走、重力、拖拽、闲置功能
+│   ├── interactive_pet.py     # 交互功能（如互动窗口、宠物间互动）
+│   ├── animated_pet.py        # 动画功能（管理动作、切换动画、基于图片底部对齐）
+│   ├── pet_a.py               # 桌宠A的实现（支持A-A和A-B互动）
+│   └── pet_b.py               # 桌宠B的实现（支持B-A互动）
+├── utils/                     # 工具类
+│   ├── upper.py               # 上界计算，应优化为窗口输出
 ├── main.py                    # 启动程序，初始化桌宠并管理
 ├── requirements.txt           # 依赖库（如PyQt5、requests等）
 ├── README.md                  # 项目说明文档
@@ -52,3 +62,6 @@
 
 菜单需要-召唤宠物-随机一只、确定的某一只；窗口互动允许-具体哪些窗口可选；ai接口配置
 消灭一只宠物
+
+优化upper更名为窗口选择，提供允许互动的窗口
+一旦允许后，灰狗将把它作为可互动的（可站立、攀爬）
