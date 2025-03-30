@@ -73,49 +73,54 @@ class BasePet(QWidget):
         """更新动画，根据状态播放不同的动画"""
         if self.state == "idle":
             images = self.idle_images
-
         elif self.state == "walking":
             images = self.walk_images
-            
         elif self.state == "dragging":
-            images = self.drag_images  # 使用拖拽动画
-            # print("drag")
+            images = self.drag_images
         elif self.state == "falling":
-            images = self.fall_images  # 使用掉落动画
-            # print("fall")
+            images = self.fall_images
         elif self.state == "interaction":
-            images = self.interaction_images  # 默认返回闲置动画（互动状态可以自己定义）
-            # print("back")
-        
+            images = self.interaction_images  # 互动状态，允许特殊的动画播放
         self.current_frame = (self.current_frame + 1) % len(images)
         self.label.setPixmap(images[self.current_frame])
 
+    # 每秒触发一次，根据state调用状态切换函数
+    # 感觉这里可能会有bug
     def update_state(self):
         """更新宠物状态"""
         if self.state == "idle":
-            # print("idle1")
+            print("idle1")
             self.enter_idle_state()
         elif self.state == "walking":
+            print("walking")
             self.enter_walking_state()
         elif self.state == "falling":
+            print("falling")
             self.apply_gravity()  # 在掉落状态下应用重力
         elif self.state == "dragging":
+            print("dragging")
             self.enter_dragging_state()  # 拖拽状态的处理
 
     def enter_dragging_state(self):
         """进入拖拽状态"""
-        self.is_walking = False
-        self.state = "dragging"  # 保证进入拖拽状态
+        print("进入拖拽状态")
+        if hasattr(self, 'walk_timer') and self.walk_timer.isActive():
+            self.walk_timer.stop()  # 停止行走定时器
+            print("停止行走定时器，进入拖拽状态")
+
+        self.is_walking = False  # 确保取消行走状态
+        self.state = "dragging"  # 进入拖拽状态
         # 根据需要更新拖拽动画或处理其他逻辑
         self.label.setPixmap(self.drag_images[0])  # 更新为拖拽动画的第一帧
 
     def enter_idle_state(self):
         """进入闲置状态"""
-        # 确保只有第一次进入时才设置定时器
+        # 掉落时无法进入闲置状态，确保只有第一次进入时才设置定时器
         if self.state != "falling" and self.state != "dragging":  # 如果不是掉落或拖拽状态
             self.is_walking = False
             self.current_frame = 0
             self.label.setPixmap(self.idle_images[self.current_frame])
+            print("enter_idle_state")
             self.state = "idle"  # 设置为闲置状态
             # print("进入闲置状态")
             # 设置一个随机时间（1-5秒）后决定进入 walk 或 interaction 状态
@@ -124,21 +129,25 @@ class BasePet(QWidget):
                 self.random_event_timer.timeout.connect(self.trigger_random_event)
                 random_timeout = random.randint(1000, 5000)  # 每1-5秒触发一次
                 self.random_event_timer.start(random_timeout)
-            else:
-                print("定时器已经启动，无需重新启动")
 
     def trigger_random_event(self):
         """触发随机事件：进入 walk 或 interaction 状态"""
-        # print(f"触发随机事件: 当前状态 = {self.state}")
-        event = random.choice(["walk", "interaction"])  # 50% 的概率选择
-        if event == "walk":
-            print("触发进入行走状态")
-            self.start_walking()  # 进入行走状态
-        elif event == "interaction":
-            print("触发进入互动状态")
-            self.state = "interaction"  # 进入互动状态
+        if self.state != "falling" and self.state != "dragging":
+            print("当前状态允许触发事件")
+            event = random.choice(["walk", "interaction"])  # 50% 的概率选择
+            if event == "walk":
+                print("触发进入行走状态")
+                self.start_walking()  # 进入行走状态
+            elif event == "interaction":
+                print("触发进入互动状态")
+                self.state = "interaction"  # 进入互动状态
+                if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
+                    self.random_event_timer.stop()  # 停止定时器
+        else:
+            # 如果当前状态为 'falling' 或 'dragging'，则直接取消定时器
             if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
-                self.random_event_timer.stop()
+                self.random_event_timer.stop()  # 停止定时器
+            print("当前状态为 'falling' 或 'dragging'，已取消触发事件")
 
     def start_walking(self):
         """开始行走状态"""
@@ -180,7 +189,7 @@ class BasePet(QWidget):
             else:
                 self.state = "idle"
                 self.walk_timer.stop()  # 停止定时器
-                # print("宠物进入闲置状态")
+                print("宠物进入闲置状态walk")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -202,7 +211,7 @@ class BasePet(QWidget):
                 delta = event.globalPos() - self.prev_position
                 self.prev_position = event.globalPos()  # 更新上次位置
                 # 将速度转换为较为平滑的值，例如除以一个常数来缩放
-                self.release_velocity = QPoint(delta.x() // 10, delta.y() // 10)
+                self.release_velocity = QPoint(delta.x() , delta.y() )
 
             # 确保拖拽偏移量（self.drag_position）不为空
             if self.drag_position:
@@ -216,6 +225,7 @@ class BasePet(QWidget):
 
             # 在鼠标释放时直接使用计算的瞬时速度
             print(f"拖拽释放时的瞬时速度：{self.release_velocity}")
+            self.fall_velocity = self.release_velocity.y()
 
             # 松手后开启重力并带有初始速度
             if self.gravity_enabled:
@@ -231,6 +241,9 @@ class BasePet(QWidget):
     def apply_gravity(self):
         """自由落体状态下的物理应用"""
         if self.state == "falling":
+            if hasattr(self, 'walk_timer') and self.walk_timer.isActive():
+                self.walk_timer.stop()  # 停止行走定时器
+                print("停止行走定时器，进入拖拽状态")
             self.fall_velocity += 1  # 每次增加速度，模拟重力加速度
 
             # 水平速度会受到释放速度影响，垂直方向则受重力影响
@@ -256,3 +269,7 @@ class BasePet(QWidget):
                 self.gravity_timer.stop()  # 停止重力
                 self.state = "idle"  # 切换为闲置状态
                 print("宠物已落地，进入闲置状态")
+            else:
+                # 在掉落过程中不允许进入其他状态
+                print("宠物还在掉落中，不能切换状态")
+

@@ -1,6 +1,7 @@
 import win32gui
 import win32con
-
+# 此方法需要维护一全局变量数组，格式如下
+# 名称、有效性、
 # 获取桌面大小
 def get_desktop_bounds():
     desktop_hwnd = win32gui.GetDesktopWindow()

@@ -47,8 +47,6 @@ class PetA(BasePet):
             # 如果没有触发互动，回到闲置状态
             else:
                 self.enter_idle_state()
-        else:
-            print("当前不在互动状态")
 
 
     def trigger_close_interaction(self, other_pet):
