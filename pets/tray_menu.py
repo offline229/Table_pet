@@ -13,13 +13,11 @@ import sys
 from PyQt5.QtCore import QTimer, QPoint
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QCheckBox, QDialog, QVBoxLayout, QDialogButtonBox, QLabel
-from pets.pet_a import PetA
-from pets.pet_b import PetB
-from pets.pet_manager import PetManager
+
 from utils.upper import window_info_list, update_window_validity
 
+tray_icon = None  # 全局变量
 
-app = QApplication(sys.argv)
 
 # 所有宠物类型
 pet_types = [PetA, PetB]
@@ -61,8 +59,16 @@ def destroy_all_pets():
 
 def exit_program():
     """退出程序"""
+    print("exit_program 被调用")
     destroy_all_pets()
-    QApplication.quit()
+    
+    # 防止误调用
+    if QApplication.instance().closingDown():
+        print("事件循环已关闭，无法退出")
+    else:
+        QApplication.quit()
+
+
 
 def rain():
     """随机召唤10到20只宠物，并在几秒后全部销毁"""
@@ -77,7 +83,7 @@ def rain():
         pet = pet_class()  # 创建宠物实例
         # 随机生成较高的位置（屏幕上方位置）
         x = random.randint(0, QApplication.primaryScreen().geometry().width() - 100)
-        y = random.randint(0, 800)  # 随机高的位置（确保宠物在屏幕上方）
+        y = random.randint(-100, 400)  # 随机高的位置（确保宠物在屏幕上方）
         pet.move(QPoint(x, y))
         pet.show()
         PetManager.register_pet(pet)  # 注册宠物实例
@@ -131,21 +137,32 @@ def on_checkbox_state_changed(state, index):
 
 def window_interaction():
     """触发互动范围功能，显示所有窗口列表供用户选择"""
-    dialog = create_window_selection_dialog()
-    
-    # 确保在对话框关闭后能正确处理事件
-    result = dialog.exec_()  # 确保这是阻塞调用，直到用户做出选择
-    print(f"对话框返回结果: {result}")  # 输出返回结果
-    if result == QDialog.Accepted:
-        print("对话框确认选择")
-    else:
-        print("对话框取消选择")
-    
-    # 这里可以处理其他后续操作，如关闭对话框后的清理工作
+    try:
+        print("准备创建窗口选择对话框")
+        dialog = create_window_selection_dialog()
+        print("对话框已创建，准备显示")
+        result = dialog.exec_()
+        print(f"对话框关闭，返回结果: {result}")
+
+        if result == QDialog.Accepted:
+            print("对话框确认选择")
+        elif result == QDialog.Rejected:
+            print("对话框取消选择")
+        else:
+            print("未知返回值")
+
+        # 在窗口关闭后，检查事件循环状态
+        print(f"事件循环是否运行中: {QApplication.instance().closingDown()}")
+
+    except Exception as e:
+        print(f"发生异常: {e}")
+
+
 
 
 def create_tray_icon():
     """创建托盘图标和菜单"""
+    global tray_icon  # 使用全局变量持有引用
     tray_icon = QSystemTrayIcon()
     tray_icon.setIcon(QIcon('assets/icon.png'))
     tray_icon.setVisible(True)
@@ -192,6 +209,3 @@ def create_tray_icon():
 
     return tray_icon
 
-# 创建并显示系统托盘图标
-tray_icon = create_tray_icon()
-sys.exit(app.exec_())
