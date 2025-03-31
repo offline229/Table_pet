@@ -1,8 +1,11 @@
 import win32gui
 import win32con
-# 此方法需要维护一全局变量数组，格式如下
-# 名称、有效性、
-# 获取桌面大小
+import random
+
+# 全局变量，存储窗口信息
+window_info_list = []
+
+# 获取桌面边界
 def get_desktop_bounds():
     desktop_hwnd = win32gui.GetDesktopWindow()
     left, top, right, bottom = win32gui.GetWindowRect(desktop_hwnd)
@@ -18,35 +21,23 @@ def is_invalid_window(window_title):
     invalid_titles = ["设置", "Windows 输入体验", "Program Manager"]
     return any(title in window_title for title in invalid_titles)
 
-# 计算窗口上界可见性，返回可见范围和层级信息
-def calculate_visibility(hwnd, top, left, right, all_windows):
-    visibility_ranges = [(left, right)]  # 初始可见范围
-    all_windows.sort(key=lambda w: w[2])  # 按窗口 top 坐标排序，模拟 Z 轴层级
-    layer_level = 0  # 层级计数
+# 添加窗口信息
+def add_window_info(window_title, is_valid, left, top, right, bottom):
+    # 将窗口名称、有效性标志和坐标信息添加到全局变量数组中
+    window_info_list.append([window_title, is_valid, (left, top, right, bottom)])
 
-    for other_hwnd, o_left, o_top, o_right, o_bottom in all_windows:
-        if other_hwnd == hwnd or not win32gui.IsWindowVisible(other_hwnd):
-            continue
+# 更新窗口有效性
+def update_window_validity(index, validity):
+    window_info_list[index][1] = validity  # 更新有效性（0 或 1）
+    print_window_info()
 
-        if o_top > top:  # 仅计算更高层级窗口对当前窗口的影响
-            continue
+# 打印所有窗口信息
+def print_window_info():
+    for window_info in window_info_list:
+        print(f"名称: {window_info[0]}, 有效性: {window_info[1]}, 坐标: {window_info[2]}")
 
-        layer_level += 1  # 层级递增
-        new_ranges = []
-        for v_left, v_right in visibility_ranges:
-            if o_right <= v_left or o_left >= v_right:
-                new_ranges.append((v_left, v_right))  # 没有遮挡
-            else:
-                if o_left > v_left:
-                    new_ranges.append((v_left, o_left))
-                if o_right < v_right:
-                    new_ranges.append((o_right, v_right))
-        visibility_ranges = new_ranges
-
-    return visibility_ranges, layer_level
-
-# 枚举窗口回调，输出层级信息
-def enum_windows_callback(hwnd, all_windows, desktop_bounds, max_layer_window):
+# 枚举窗口回调，输出窗口信息
+def enum_windows_callback(hwnd, all_windows, desktop_bounds):
     if win32gui.IsWindowVisible(hwnd):
         window_title = win32gui.GetWindowText(hwnd)
         if not window_title.strip() or is_invalid_window(window_title):
@@ -58,44 +49,26 @@ def enum_windows_callback(hwnd, all_windows, desktop_bounds, max_layer_window):
         if width <= 0 or height <= 0 or is_window_out_of_bounds(left, top, right, bottom, desktop_bounds):
             return
 
-        visibility_ranges, layer_level = calculate_visibility(hwnd, top, left, right, all_windows)
-        
-        # 如果当前窗口的层级比最大层级大，则更新最大层级窗口
-        if layer_level > max_layer_window[1]:
-            max_layer_window[0] = (top, left, right)  # 更新当前窗口的 (上界, 左值, 右值)
-            max_layer_window[1] = layer_level
+        is_valid = 1  # 假设窗口有效，您可以在此进行其他有效性检查
+        add_window_info(window_title, is_valid, left, top, right, bottom)
 
-# 获取任务栏和最大层级窗口的上界、左值、右值
-def get_window_and_taskbar_bounds():
+# 获取所有窗口的信息并打印
+def get_all_windows_info():
     desktop_bounds = get_desktop_bounds()
     all_windows = []
-    max_layer_window = [None, -1]  # 用于保存最大层级窗口的信息 (窗口坐标, 最大层级)
-    taskbar_left, taskbar_right = desktop_bounds[0], desktop_bounds[2]  # 默认任务栏填充整个桌面宽度
-
+    
     def collect_windows(hwnd, _):
         if win32gui.IsWindowVisible(hwnd):
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             all_windows.append((hwnd, left, top, right, bottom))
-
+    
     win32gui.EnumWindows(collect_windows, None)
-    all_windows.sort(key=lambda w: w[2])  # 按 top 位置排序，模拟 Z 轴
-
-    # 输出任务栏上界
-    taskbar_hwnd = win32gui.FindWindow("Shell_TrayWnd", None)
-    taskbar_top = None
-    if taskbar_hwnd:
-        _, taskbar_top, _, _ = win32gui.GetWindowRect(taskbar_hwnd)
-        _, _, taskbar_right, _ = win32gui.GetWindowRect(taskbar_hwnd)
-        taskbar_left = desktop_bounds[0]
-        taskbar_right = taskbar_right if taskbar_right else desktop_bounds[2]
-
+    
     for hwnd, _, _, _, _ in all_windows:
-        enum_windows_callback(hwnd, all_windows, desktop_bounds, max_layer_window)
+        enum_windows_callback(hwnd, all_windows, desktop_bounds)
 
-    # 返回任务栏和最大层级窗口的信息
-    if taskbar_top is not None and max_layer_window[0] is not None:
-        return [(taskbar_top, taskbar_left, taskbar_right), max_layer_window[0]]  # 返回任务栏的 (上界, 左值, 右值) 和最大层级窗口的信息
+    # 打印所有窗口信息
+    print_window_info()
 
-# 示例：调用函数并获取结果
-result = get_window_and_taskbar_bounds()
-print(result)
+# 调用并打印窗口信息
+get_all_windows_info()

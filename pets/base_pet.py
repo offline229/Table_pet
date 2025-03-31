@@ -3,7 +3,6 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QLabel, QWidget, QDesktopWidget
 import random
 from PyQt5.QtWidgets import QApplication 
-from utils.upper import get_window_and_taskbar_bounds
 from PyQt5.QtGui import QScreen
 from pets.pet_manager import PetManager
 
@@ -89,16 +88,16 @@ class BasePet(QWidget):
     def update_state(self):
         """更新宠物状态"""
         if self.state == "idle":
-            print("idle1")
+            # print("idle1")
             self.enter_idle_state()
         elif self.state == "walking":
-            print("walking")
+            # print("walking")
             self.enter_walking_state()
         elif self.state == "falling":
-            print("falling")
+            # print("falling")
             self.apply_gravity()  # 在掉落状态下应用重力
         elif self.state == "dragging":
-            print("dragging")
+            # print("dragging")
             self.enter_dragging_state()  # 拖拽状态的处理
 
     def enter_dragging_state(self):
@@ -120,7 +119,6 @@ class BasePet(QWidget):
             self.is_walking = False
             self.current_frame = 0
             self.label.setPixmap(self.idle_images[self.current_frame])
-            print("enter_idle_state")
             self.state = "idle"  # 设置为闲置状态
             # print("进入闲置状态")
             # 设置一个随机时间（1-5秒）后决定进入 walk 或 interaction 状态
@@ -188,8 +186,7 @@ class BasePet(QWidget):
                 # print(f"宠物在运动，当前X位置：{self.x()}")
             else:
                 self.state = "idle"
-                self.walk_timer.stop()  # 停止定时器
-                print("宠物进入闲置状态walk")
+                self.walk_timer.stop()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -268,8 +265,5 @@ class BasePet(QWidget):
                 self.move(new_x, target_bottom)  # 将宠物位置设置为地面
                 self.gravity_timer.stop()  # 停止重力
                 self.state = "idle"  # 切换为闲置状态
-                print("宠物已落地，进入闲置状态")
-            else:
-                # 在掉落过程中不允许进入其他状态
-                print("宠物还在掉落中，不能切换状态")
+
 
