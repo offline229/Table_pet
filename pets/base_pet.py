@@ -5,7 +5,8 @@ import random
 from PyQt5.QtWidgets import QApplication 
 from PyQt5.QtGui import QScreen
 from pets.pet_manager import PetManager
-
+from utils.windows_manager import window_info_list
+# 由于所有的move(x,y)都是基于图片左上角为坐标，自定义一个true_move(x,y),
 class BasePet(QWidget):
     def __init__(self, images_path):
         super().__init__()
@@ -19,7 +20,7 @@ class BasePet(QWidget):
         self.walk_images = [self.load_image(f"walking/walk_{i}.png") for i in range(1, 3)]
         self.drag_images = [self.load_image(f"drag/drag_{i}.png") for i in range(1, 3)]  # 拖拽状态
         self.fall_images = [self.load_image(f"fall/fall_{i}.png") for i in range(1, 3)]  # 掉落状态
-        self.interaction_images = [self.load_image(f"idle/idle_{i}.png") for i in range(1, 3)]
+        self.interaction_images = [self.load_image(f"idle/idle_{i}.png") for i in range(1, 3)] #互动状态，作为可拓展的状态在子类实现
 
         self.current_frame = 0
         self.is_walking = False
@@ -66,7 +67,11 @@ class BasePet(QWidget):
         return ((self.x() - other_pet.x()) ** 2 + (self.y() - other_pet.y()) ** 2) ** 0.5
 
     def load_image(self, filename):
-        return QPixmap(f"{self.images_path}/{filename}")
+        path = f"{self.images_path}/{filename}"
+        pixmap = QPixmap(path)
+        if pixmap.isNull():
+            print(f"❌ 加载图片失败: {path}")
+        return pixmap
 
     def update_animation(self):
         """更新动画，根据状态播放不同的动画"""
@@ -84,7 +89,6 @@ class BasePet(QWidget):
         self.label.setPixmap(images[self.current_frame])
 
     # 每秒触发一次，根据state调用状态切换函数
-    # 感觉这里可能会有bug
     def update_state(self):
         """更新宠物状态"""
         if self.state == "idle":
@@ -102,10 +106,10 @@ class BasePet(QWidget):
 
     def enter_dragging_state(self):
         """进入拖拽状态"""
-        print("进入拖拽状态")
+        # print("进入拖拽状态")
         if hasattr(self, 'walk_timer') and self.walk_timer.isActive():
             self.walk_timer.stop()  # 停止行走定时器
-            print("停止行走定时器，进入拖拽状态")
+            # print("停止行走定时器，进入拖拽状态")
 
         self.is_walking = False  # 确保取消行走状态
         self.state = "dragging"  # 进入拖拽状态
@@ -131,13 +135,13 @@ class BasePet(QWidget):
     def trigger_random_event(self):
         """触发随机事件：进入 walk 或 interaction 状态"""
         if self.state != "falling" and self.state != "dragging":
-            print("当前状态允许触发事件")
+           # print("当前状态允许触发事件")
             event = random.choice(["walk", "interaction"])  # 50% 的概率选择
             if event == "walk":
-                print("触发进入行走状态")
+                # print("触发进入行走状态")
                 self.start_walking()  # 进入行走状态
             elif event == "interaction":
-                print("触发进入互动状态")
+                # print("触发进入互动状态")
                 self.state = "interaction"  # 进入互动状态
                 if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
                     self.random_event_timer.stop()  # 停止定时器
@@ -145,12 +149,12 @@ class BasePet(QWidget):
             # 如果当前状态为 'falling' 或 'dragging'，则直接取消定时器
             if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
                 self.random_event_timer.stop()  # 停止定时器
-            print("当前状态为 'falling' 或 'dragging'，已取消触发事件")
+            # print("当前状态为 'falling' 或 'dragging'，已取消触发事件")
 
     def start_walking(self):
         """开始行走状态"""
         if self.state != "falling" and self.state != "dragging":  # 检查是否处于掉落或拖拽状态
-            print("开始行走状态")
+            # print("开始行走状态")
             self.is_walking = True
             self.state = "walking"  # 进入行走状态
             self.current_frame = 0
@@ -192,9 +196,10 @@ class BasePet(QWidget):
         if event.button() == Qt.LeftButton:
             self.dragging = True
             self.prev_position = event.globalPos()  # 记录鼠标按下时的位置
+            print(f"poi{self.prev_position}")
             self.drag_position = event.globalPos() - self.frameGeometry().topLeft()  # 记录拖拽偏移量
             event.accept()
-            print("开始拖拽宠物")
+            # print("开始拖拽宠物")
 
             # 如果重力已开启，停止重力
             if self.gravity_enabled:
@@ -218,7 +223,7 @@ class BasePet(QWidget):
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.dragging = False
-            print("结束拖拽宠物")
+            # print("结束拖拽宠物")
 
             # 在鼠标释放时直接使用计算的瞬时速度
             print(f"拖拽释放时的瞬时速度：{self.release_velocity}")
@@ -228,7 +233,7 @@ class BasePet(QWidget):
             if self.gravity_enabled:
                 self.state = "falling"  # 设置为掉落状态
                 self.gravity_timer.start(30)  # 开启重力定时器
-
+    
     def enable_gravity(self):
         """开启重力效果"""
         self.gravity_enabled = True
@@ -238,32 +243,58 @@ class BasePet(QWidget):
     def apply_gravity(self):
         """自由落体状态下的物理应用"""
         if self.state == "falling":
+            # 停止行走定时器
             if hasattr(self, 'walk_timer') and self.walk_timer.isActive():
-                self.walk_timer.stop()  # 停止行走定时器
-                print("停止行走定时器，进入拖拽状态")
-            self.fall_velocity += 1  # 每次增加速度，模拟重力加速度
+                self.walk_timer.stop()
 
-            # 水平速度会受到释放速度影响，垂直方向则受重力影响
-            new_x = self.x() + self.release_velocity.x()  # 水平速度受 release_velocity.x() 控制
-            new_y = self.y() + self.fall_velocity  # 垂直速度受重力影响
+            self.fall_velocity += 1  # 模拟重力加速度
 
-            self.move(new_x, new_y)
+            # 基于真实宠物图片大小获取宽高
+            pet_width = self.idle_images[0].width()
+            pet_height = self.idle_images[0].height()
 
-            # 使用 QScreen 来获取屏幕信息
+            # 计算宠物中心位置
+            new_x = self.x() + self.release_velocity.x()
+            new_y = self.y() + self.fall_velocity
+
+            # 获取屏幕和任务栏信息
             screen = QApplication.primaryScreen()
             screen_rect = screen.geometry()
             screen_bottom = screen_rect.bottom()
+            taskbar_height = 40
+            ground_level = screen_bottom - taskbar_height
 
-            taskbar_height = 40  # 任务栏的高度
-            ground_level = screen_bottom - taskbar_height  # 计算宠物应落地的位置（屏幕底部 - 任务栏高度）
-            pet_height = self.label.pixmap().height()
-            target_bottom = ground_level - pet_height  # 宠物的底部位置
+            # === 动态生成有效地面线段 ===
+            standing_lines = [(ground_level, 0, screen_rect.width(), "桌面")]  # 默认地面线段
 
-            # 如果宠物已经触及底部，则停止掉落
-            if new_y >= target_bottom:
-                self.fall_velocity = 0  # 停止加速
-                self.move(new_x, target_bottom)  # 将宠物位置设置为地面
-                self.gravity_timer.stop()  # 停止重力
-                self.state = "idle"  # 切换为闲置状态
+            for window_info in window_info_list:
+                title, is_valid, (left, top, right, bottom) = window_info
+                if is_valid:
+                    standing_lines.append((top, left, right, title))  # 包含窗口名称
 
+            # === 判断宠物是否落在任意线段上 ===
+            can_stand = False
+            for line_y, line_x1, line_x2, window_name in standing_lines:
+                # 判断宠物底端中部是否触碰地面线
+                pet_bottom_center_x = new_x + pet_width // 2
+                if new_y + pet_height >= line_y and line_x1 <= pet_bottom_center_x <= line_x2:
+                    can_stand = True
+                    new_y = line_y - pet_height
+
+                    # 调试信息
+                    print(f"✅ 命中地面线段 - 窗口名称: {window_name}")
+                    print(f"地面线段: y={line_y}, x范围=({line_x1}, {line_x2})")
+                    print(f"宠物位置: x={new_x}, y={new_y}, 宠物宽度={pet_width}, 高度={pet_height}")
+                    break
+
+            # 如果能站立
+            if can_stand:
+                self.fall_velocity = 0
+                self.move(new_x, new_y)
+                print(f"newxy{new_x},{new_y}")
+                self.gravity_timer.stop()
+                self.state = "idle"
+            else:
+                # 否则继续下落
+                self.move(new_x, new_y)
 

@@ -1,26 +1,21 @@
 import sys
 import random
-from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction
+from PyQt5.QtCore import QTimer, QPoint
+from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QCheckBox, QDialog, QVBoxLayout, QDialogButtonBox, QLabel
+
 from pets.pet_a import PetA  # 导入PetA类
 from pets.pet_b import PetB  # 导入PetB类
 from pets.pet_manager import PetManager  # 全局宠物管理器
-from PyQt5.QtCore import QTimer, QPoint
-
-
-import sys
-from PyQt5.QtCore import QTimer, QPoint
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QCheckBox, QDialog, QVBoxLayout, QDialogButtonBox, QLabel
-
-from utils.upper import window_info_list, update_window_validity
+from utils.windows_manager import window_info_list, update_window_validity
 
 tray_icon = None  # 全局变量
 
 
 # 所有宠物类型
 pet_types = [PetA, PetB]
+
+#召唤
 
 def summon_pet_a():
     """召唤2只PetA"""
@@ -45,6 +40,9 @@ def random_summon():
         summon_pet_a()
     elif pet_class == PetB:
         summon_pet_b()
+
+
+# 销毁
 
 def destroy_random_pet():
     """随机销毁一只宠物"""

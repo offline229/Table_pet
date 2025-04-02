@@ -29,7 +29,7 @@ class PetA(BasePet):
     def check_distance_and_interact(self):
         """检测与其他宠物的距离并触发相对动画"""
         if self.state == "interaction":  # 只有在互动状态下才进行互动检测
-            print("概率触发互动")
+            # print("概率触发互动")
             # 80% 概率触发互动
             if random.random() < 0.8:
                 for other_pet in PetManager.get_all_pets():
@@ -41,8 +41,8 @@ class PetA(BasePet):
                         if distance < 100:
                             self.trigger_close_interaction(other_pet)  # 触发互动
                             break  # 触发成功后停止循环
-                        else:
-                            print("距离太远，无法互动")
+                        # else:
+                            # print("距离太远，无法互动")
 
             # 如果没有触发互动，回到闲置状态
             else:
@@ -51,13 +51,13 @@ class PetA(BasePet):
 
     def trigger_close_interaction(self, other_pet):
         """根据距离触发相对动画"""
-        print("找到一个互动对象")
+        # print("找到一个互动对象")
         if isinstance(other_pet, PetA):  # 如果是同类PetA
-            print("两只 PetA 相遇，触发 A-A 互动动画！")
+            # print("两只 PetA 相遇，触发 A-A 互动动画！")
             self.enter_interaction_state("a_a")
             other_pet.enter_interaction_state("a_a")  # 被互动的宠物也进入 A-A 互动状态
         elif isinstance(other_pet, BasePet):  # 和其他宠物（例如 PetB）互动
-            print("PetA 与其他宠物相遇，触发 A-B 互动动画")
+            # print("PetA 与其他宠物相遇，触发 A-B 互动动画")
             self.enter_interaction_state("a_b")
 
     def enter_interaction_state(self, interaction_type):
@@ -71,7 +71,7 @@ class PetA(BasePet):
             self.current_frame = 0
             self.is_walking = False  # 禁用行走，防止频闪
             self.state = "interaction"  # 设置为互动状态
-            print(f"播放 {interaction_type} 动画")
+            # print(f"播放 {interaction_type} 动画")
 
             # 设置动画时长：随机 3-5 秒
             self.interaction_duration = random.randint(3000, 5000)
