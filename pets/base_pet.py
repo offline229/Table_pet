@@ -6,19 +6,8 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QScreen
 from pets.pet_manager import PetManager
 from utils.windows_manager import window_info_list
-# 由于所有的move(x,y)都是基于图片左上角为坐标，自定义一个true_move(x,y),
-# 最好的是根据xy作为真正坐标，move显示出结果
-# 每隔一定时间
 
-# 维护一套true_x,true_y用于坐标计算，作为当前图片底部
-# 维护一个img的长宽，根据state变化
-# 每当move,则移动到true_x -宽度/2, true_y -高度的位置
-# 好像不行，看来状态切换的时候都需要一个move把当前状态的x,y更新。
-# 摔落的时候x,y正常使用，但判断标准是底部判断
-# 摔落完状态立马切换到idle的时候也需要一个move改变
 
-# 如何实现动态检测重力呢，每隔一段时间查询是否脚在线上，如果不在，就开始摔落？
-# 摔落
 class BasePet(QWidget):
     def __init__(self, images_path):
         super().__init__()
@@ -60,6 +49,10 @@ class BasePet(QWidget):
         self.gravity_enabled = False
         self.gravity_timer = QTimer()
         self.gravity_timer.timeout.connect(self.apply_gravity)
+
+        self.check_timer = QTimer()
+        self.check_timer.timeout.connect(self.check_ground)
+        self.check_timer.start(100)  # 每隔0.1秒检查一次
 
         # 初始化自由落体速度
         self.fall_velocity = 0
@@ -118,7 +111,6 @@ class BasePet(QWidget):
             # 切换到 idle 状态
             self.pet_width = self.idle_images[0].width()
             self.pet_height = self.idle_images[0].height()
-            self.check_ground()
             # print(f"size:{self.pet_width},{self.pet_height}")
             self.enter_idle_state()
 
@@ -126,7 +118,6 @@ class BasePet(QWidget):
             # 切换到 walking 状态
             self.pet_width = self.walk_images[0].width()
             self.pet_height = self.walk_images[0].height()
-            self.check_ground()
             self.enter_walking_state()
             # print(f"size:{self.pet_width},{self.pet_height}")
 
@@ -193,26 +184,34 @@ class BasePet(QWidget):
                 self.random_event_timer.stop()  # 停止定时器
             # print("当前状态为 'falling' 或 'dragging'，已取消触发事件")
     def start_walking(self):
-        """开始行走状态"""
-        self.check_ground()
+        """初始化行走状态"""
         if self.state != "falling" and self.state != "dragging":  # 检查是否处于掉落或拖拽状态
             print("开始行走状态")
             self.is_walking = True
             self.state = "walking"  # 进入行走状态
             self.current_frame = 0
-            print(f"check {self.y()+ self.idle_images[0].height() - self.walk_images[0].height()}")
             self.move(int(self.x()+ self.idle_images[0].width()/2 - self.walk_images[0].width()/2),int(self.y()+ self.idle_images[0].height() - self.walk_images[0].height()))
             
             self.label.setPixmap(self.walk_images[self.current_frame])
-
             # 停止定时器，防止闲置状态被反复进入
             if hasattr(self, 'random_event_timer') and self.random_event_timer.isActive():
                 self.random_event_timer.stop()
 
             # 随机选择方向和速度（恒定速度）
             self.walk_direction = random.choice([-1, 1])  # 记录运动方向，-1表示左，1表示右
-            self.walk_distance = random.randint(100, 300)  # 走的距离
             self.walk_speed = 1  # 恒定速度，减小步长以实现平滑滑动
+
+            # 限制宠物行走范围
+            screen = QApplication.primaryScreen()
+            screen_rect = screen.geometry()
+            self.min_x = 0
+            self.max_x = screen_rect.width() - self.idle_images[0].width()  # 最大边界
+            
+            # 计算行走距离，确保不会超出屏幕边界
+            if self.walk_direction == -1:
+                self.walk_distance = min(random.randint(100, 500), self.x() - self.min_x)
+            else:
+                self.walk_distance = min(random.randint(100, 500), self.max_x - self.x())
 
             print(f"宠物进入行走状态，走向 {'左' if self.walk_direction == -1 else '右'}, 行走距离：{self.walk_distance}")
             # 设置行走定时器更新位置
@@ -222,7 +221,8 @@ class BasePet(QWidget):
       
     def enter_walking_state(self):
         """进入运动状态"""
-        self.check_ground()
+        # 每隔10ms检测一次，要么继续走，要么开始掉落
+        # 检测出结果后要么无事发生，要么
         if self.is_walking:
             if self.walk_distance > 0:
                 # 每次更新非常小的步长，按照之前确定的方向
@@ -232,8 +232,7 @@ class BasePet(QWidget):
                 new_pos = self.pos() + QPoint(move_x, 0)
                 self.move(new_pos)
                 self.walk_distance -= abs(move_x)
-                # move完之后手动更新真坐标
-                # print(f"宠物在运动，当前X位置：{self.x()}")
+                # 走完了，进入闲置
             else:
                 self.state = "idle"
                 self.move(int(self.x() + self.walk_images[0].width()/2- self.idle_images[0].width()/2), int(self.y()+self.walk_images[0].height()- self.idle_images[0].height()))
@@ -295,7 +294,7 @@ class BasePet(QWidget):
                 self.walk_timer.stop()
 
             self.fall_velocity += 1 
-            
+
             new_x = self.x() + self.release_velocity.x()
             new_y = self.y() + self.fall_velocity
 
@@ -308,7 +307,8 @@ class BasePet(QWidget):
 
             # === 动态生成有效地面线段 ===
             standing_lines = [(ground_level, 0, screen_rect.width(), "桌面")]  # 默认地面线段
-
+            if new_x < 0 or new_x > screen_rect.width() - self.pet_width:
+                self.release_velocity.setX(0)  # 超出屏幕边界时设置 X 速度为 0
             for window_info in window_info_list:
                 title, is_valid, (left, top, right, bottom) = window_info
                 if is_valid:
@@ -319,7 +319,7 @@ class BasePet(QWidget):
             for line_y, line_x1, line_x2, window_name in standing_lines:
                 # 判断宠物x,y是否触碰地面线
                 # x在范围内且y比线低一点，那么同步y到线上
-                if  (line_y +  100 )>= (new_y + self.fall_images[0].height()) >= line_y and line_x1 <= new_x + self.fall_images[0].width() <= line_x2:
+                if  (line_y +  100 )>= (new_y + self.fall_images[0].height()) >= line_y and line_x1 - 50 <= new_x <= line_x2 - self.fall_images[0].width() + 50:
                     can_stand = True
                     print(f"宠物前位置:  y={self.y()+ self.fall_images[0].height()}")
                     print(f"宠物位置:  y={new_y+ self.fall_images[0].height()}")
@@ -328,13 +328,24 @@ class BasePet(QWidget):
                     # 调试信息
                     print(f"✅ 命中地面线段 - 窗口名称: {window_name}")
                     print(f"地面线段: y={line_y}, x范围=({line_x1}, {line_x2})")
-                    print(f"宠物位置: x={new_x}, y={new_y}, 宠物宽度={self.pet_width}, 高度={self.pet_height}")
+                    print(f"idle宠物位置: x={new_x}, y={new_y}, 掉落宠物宽度={self.pet_width}, 高度={self.pet_height}")
+                    break
+                elif new_y + self.fall_images[0].height() >= ground_level:
+                    can_stand = True
+                    new_y = ground_level - self.idle_images[0].height()
+                    print("宠物触及桌面地面线")
                     break
 
-            # 如果能站立
+
+            # 如果能站立，更新宠物位置与宽度
             if can_stand:
+                self.pet_width = self.fall_images[0].width()
+                self.pet_height = self.fall_images[0].height()
+                print(f"{self.pet_width}")
                 self.fall_velocity = 0
                 self.move(int(new_x+self.pet_width/2- self.idle_images[0].width()/2), int(new_y))
+                self.pet_width = self.idle_images[0].width()
+                self.pet_height = self.idle_images[0].height()
                 self.gravity_timer.stop()
                 self.images = self.idle_images
                 self.state = "idle"
@@ -342,9 +353,12 @@ class BasePet(QWidget):
                 self.move(new_x, new_y)
 
     def check_ground(self):
+        if self.state != "dragging":
             """检查是否在有效地面上，否则启动掉落"""
             # 获取宠物当前位置
-            current_x = self.x() + int(self.pet_height/2)
+            self.update_pet_size()
+            # print(f"当前宠物高度{self.pet_height}")
+            current_x = self.x() + int(self.pet_width/2)
             current_y = self.y() + self.pet_height
 
             # 获取屏幕和任务栏信息
@@ -360,19 +374,41 @@ class BasePet(QWidget):
             for window_info in window_info_list:
                 title, is_valid, (left, top, right, bottom) = window_info
                 if is_valid:
-                    standing_lines.append((top, left, right, title))  # 包含窗口名称
+                    standing_lines.append((top, left, right, title))
+            
 
             # === 判断当前位置是否站在地面上 ===
             on_ground = False
             for line_y, line_x1, line_x2, window_name in standing_lines:
-                if current_y == line_y and line_x1 <= current_x + self.pet_width <= line_x2:
+                if current_y == line_y and line_x1 - 50 <= current_x  <= line_x2 + 50 or current_y >= ground_level:
                     on_ground = True
-                    print(f"ground{window_name},{line_y},{current_y}")
+                    # print(f"当前在地面 {window_name}上,地面高度为{line_y}")
+                    # print(f"x坐标检测{current_x},current_x,{line_x2+ 50}")
                     break
 
             # 如果不在地面上，启动掉落
             if not on_ground:
+                # print(f"动态检测到当前不在地面，地面高度{ground_level},当前状态{self.state},当前y坐标与宠物高度与理论点{self.y()},{self.pet_height},{self.y() + self.pet_height}")
+                self.is_walking = False
                 self.state = "falling"
                 self.gravity_enabled = True
                 self.gravity_timer.start(30)
-                print("not ground")
+                # print("not ground")
+                if hasattr(self, 'walk_timer') and self.walk_timer.isActive():
+                    self.walk_timer.stop()
+
+    def update_pet_size(self):
+        """根据当前状态更新宠物的宽度和高度"""
+        if self.state == "idle":
+            self.pet_width = self.idle_images[0].width()
+            self.pet_height = self.idle_images[0].height()
+        elif self.state == "walking":
+            self.pet_width = self.walk_images[0].width()
+            self.pet_height = self.walk_images[0].height()
+        elif self.state == "falling":
+            self.pet_width = self.fall_images[0].width()
+            self.pet_height = self.fall_images[0].height()
+        elif self.state == "dragging":
+            self.pet_width = self.drag_images[0].width()
+            self.pet_height = self.drag_images[0].height()
+        # print(f"更新宠物尺寸：宽{self.pet_width}, 高{self.pet_height}")
