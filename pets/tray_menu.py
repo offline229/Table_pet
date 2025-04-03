@@ -19,7 +19,7 @@ pet_types = [PetA, PetB]
 
 def summon_pet_a():
     """召唤2只PetA"""
-    for i in range(2):  
+    for i in range(1):  
         pet_a = PetA()
         pet_a.move(QPoint(100 + i * 150, 100 + i * 50))
         pet_a.show()

@@ -58,6 +58,7 @@ def update_window_validity(*args):
 
 
 
+
 # 打印所有窗口信息
 def print_window_info():
     for window_info in window_info_list:
